@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{fmt::Debug, process::Command};
 
 const HOST: &str = "Arachnid";
 const WAIT_TIME: u64 = 2;
@@ -13,23 +13,9 @@ fn main() -> Result<(), &'static str> {
     let full_path = std::env::current_dir().unwrap();
     let current_dir = full_path.iter().last().unwrap().to_str().unwrap();
 
-    let config =
-        std::fs::read_to_string(".cargo/config.toml").or(Err("No cargo config file found"))?;
-
-    let parsed_config = config
-        .parse::<toml::Table>()
-        .or(Err("Unable to parse cargo config"))?;
-
-    let build_config = parsed_config
-        .get("build")
-        .ok_or("No build section in config")?;
-    let target = build_config
-        .get("target")
-        .ok_or("No target specification in config")?
-        .as_str()
-        .ok_or("Target is not a string")?;
-
-    let chip = from_target_to_chip(target)?;
+    if !std::path::Path::new("Embed.toml").exists() {
+        return Err("Not in an valid project, Please add an Embed.toml file");
+    }
 
     // Check Arachnid is online
     if !ping_host() {
@@ -52,7 +38,7 @@ fn main() -> Result<(), &'static str> {
     Command::new("ssh")
         .args(["-t", HOST])
         .arg(format!(
-            ". $HOME/.cargo/env; cd embedded/{current_dir}; cargo embed --chip {chip}"
+            ". $HOME/.cargo/env; cd embedded/{current_dir}; cargo embed"
         ))
         .spawn()
         .or(Err("Failed to run embed command"))?
@@ -60,13 +46,6 @@ fn main() -> Result<(), &'static str> {
         .or(Err("Failed to wait for ssh connection"))?;
 
     Ok(())
-}
-
-fn from_target_to_chip(target: &str) -> Result<&'static str, &'static str> {
-    match target {
-        "thumbv6m-none-eabi" => Ok("nRF51822_xxAA"),
-        _ => Err("Target not recognised as a specific chip"),
-    }
 }
 
 fn attempt_to_turn_on_host(attempts: u32) -> Result<(), &'static str> {
