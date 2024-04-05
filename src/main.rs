@@ -39,6 +39,15 @@ fn main() -> Result<(), &'static str> {
     // TODO This could fail due to the Arachnid machine being offline
     // I can make it check that first and power it on if not
 
+    // cargo-embed
+    Command::new("ssh")
+        .args(["-t", "Arachnid"])
+        .arg(format!(
+            ". $HOME/.cargo/env; cd embedded/{current_dir}; cargo embed --chip {chip}"
+        ))
+        .spawn()
+        .or(Err("Failed to run embed command"))?;
+
     Ok(())
 }
 
